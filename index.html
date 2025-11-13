@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KetoLife Pro - Demo Empresarial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.birds.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .bg-gradient-keto { background: linear-gradient(135deg, #f8f9f0 0%, #e8ebe3 100%); }
+        .text-keto-primary { color: #2d5a3d; }
+        .text-keto-secondary { color: #6b7c6b; }
+        .bg-keto-accent { background-color: #a8c090; }
+        .bg-keto-dark { background-color: #1a3d2e; }
+        .vanta-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        .content-overlay { position: relative; z-index: 10; }
+        .glass-effect { backdrop-filter: blur(10px); background: rgba(248, 249, 240, 0.9); }
+        .macro-circle { 
+            width: 120px; 
+            height: 120px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        .macro-circle:hover { transform: scale(1.05); }
+        .fade-in { animation: fadeIn 0.6s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-in { animation: slideIn 0.8s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        
+        /* Búsqueda inteligente */
+        .search-result-item {
+            padding: 8px 12px;
+            border: 1px solid #e8ebe3;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            margin-bottom: 4px;
+        }
+        .search-result-item:hover {
+            background-color: #a8c090;
+            color: white;
+        }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        
+        /* Loading spinner */
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #a8c090;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-keto font-sans">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass-effect border-b border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-serif font-bold text-keto-primary">KetoLife Pro</h1>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#dashboard" class="text-keto-primary hover:text-keto-secondary transition-colors font-medium" data-translate="nav-dashboard">Dashboard</a>
+                    <a href="#calculator" class="text-keto-primary hover:text-keto-secondary transition-colors font-medium" data-translate="nav-tmb">TMB</a>
+                    <a href="#menu" class="text-keto-primary hover:text-keto-secondary transition-colors font-medium" data-translate="nav-menu">Menú</a>
+                    <a href="#exercise" class="text-keto-primary hover:text-keto-secondary transition-colors font-medium" data-translate="nav-exercise">Ejercicio</a>
+                    <a href="#fasting" class="text-keto-primary hover:text-keto-secondary transition-colors font-medium" data-translate="nav-fasting">Ayuno</a>
+                    <a href="#macros" class="text-keto-primary hover:text-keto-secondary transition-colors font-medium" data-translate="nav-macros">Macros</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="languageSelector" class="bg-white/50 border border-keto-accent/30 rounded-lg px-3 py-1 text-sm">
+                        <option value="es">ES 🇪🇸</option>
+                        <option value="ca">CA 🏴󠁥󠁳󠁣󠁴󠁿</option>
+                        <option value="en">EN 🇬🇧</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="relative h-screen flex items-center justify-center overflow-hidden">
+        <div id="vanta-bg" class="vanta-canvas"></div>
+        <div class="content-overlay text-center max-w-4xl mx-auto px-4">
+            <h1 class="text-5xl md:text-7xl font-serif font-bold text-white mb-6 fade-in">
+                Transforma tu Vida con <span class="text-keto-accent">Keto</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-white/90 mb-8 fade-in" style="animation-delay: 0.3s;">
+                Aplicación definitiva para nutrición cetogénica con IA, menús personalizados y ayuno intermitente
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center fade-in" style="animation-delay: 0.6s;">
+                <button onclick="scrollToSection('dashboard')" class="bg-keto-accent hover:bg-keto-accent/80 text-white px-8 py-4 rounded-full font-semibold transition-all transform hover:scale-105">
+                    Comenzar Demo
+                </button>
+                <button onclick="scrollToSection('calculator')" class="border-2 border-white text-white hover:bg-white hover:text-keto-primary px-8 py-4 rounded-full font-semibold transition-all">
+                    Calcular TMB
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Section -->
+    <section id="dashboard" class="py-20 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-serif font-bold text-keto-primary mb-4">Dashboard Demo</h2>
+                <p class="text-lg text-keto-secondary">Monitorea tu progreso con datos en tiempo real</p>
+            </div>
+            
+            <!-- Weight Tracking -->
+            <div class="glass-effect rounded-2xl p-8 mb-8">
+                <h3 class="text-2xl font-serif font-bold text-keto-primary mb-6">Seguimiento de Peso</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-keto-primary font-semibold mb-2">Peso Actual (kg)</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="currentWeight" step="0.1" class="flex-1 px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" placeholder="70.0">
+                            <button onclick="app.addWeightEntry()" class="bg-keto-accent hover:bg-keto-accent/80 text-white px-6 py-3 rounded-lg font-semibold transition-all">Añadir</button>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-keto-primary mb-2" id="weightChange">0.0 kg</div>
+                        <div class="text-sm text-keto-secondary">Cambio desde el inicio</div>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <h4 class="font-semibold text-keto-primary mb-4">Historial de Peso</h4>
+                    <div id="weightHistory" class="space-y-2 max-h-40 overflow-y-auto">
+                        <div class="text-center text-keto-secondary py-4">No hay datos de peso registrados</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <div class="glass-effect rounded-2xl p-6 text-center slide-in">
+                    <div class="macro-circle bg-gradient-to-br from-red-400 to-red-600 mx-auto mb-4">
+                        <span class="text-white text-2xl font-bold" id="weightProgress">0.0</span>
+                        <span class="text-white text-sm">kg</span>
+                    </div>
+                    <h3 class="font-semibold text-keto-primary mb-2">Peso Perdido</h3>
+                    <p class="text-sm text-keto-secondary">Este mes</p>
+                </div>
+                
+                <div class="glass-effect rounded-2xl p-6 text-center slide-in" style="animation-delay: 0.1s;">
+                    <div class="macro-circle bg-gradient-to-br from-blue-400 to-blue-600 mx-auto mb-4">
+                        <span class="text-white text-2xl font-bold" id="fastingHours">0</span>
+                        <span class="text-white text-sm">h</span>
+                    </div>
+                    <h3 class="font-semibold text-keto-primary mb-2">Ayuno Actual</h3>
+                    <p class="text-sm text-keto-secondary">Horas consecutivas</p>
+                </div>
+                
+                <div class="glass-effect rounded-2xl p-6 text-center slide-in" style="animation-delay: 0.2s;">
+                    <div class="macro-circle bg-gradient-to-br from-green-400 to-green-600 mx-auto mb-4">
+                        <span class="text-white text-2xl font-bold" id="ketoDays">0</span>
+                        <span class="text-white text-sm">días</span>
+                    </div>
+                    <h3 class="font-semibold text-keto-primary mb-2">Modo Keto</h3>
+                    <p class="text-sm text-keto-secondary">Días consecutivos</p>
+                </div>
+                
+                <div class="glass-effect rounded-2xl p-6 text-center slide-in" style="animation-delay: 0.3s;">
+                    <div class="macro-circle bg-gradient-to-br from-purple-400 to-purple-600 mx-auto mb-4">
+                        <span class="text-white text-2xl font-bold" id="streakDays">0</span>
+                        <span class="text-white text-sm">días</span>
+                    </div>
+                    <h3 class="font-semibold text-keto-primary mb-2">Racha</h3>
+                    <p class="text-sm text-keto-secondary">Objetivos cumplidos</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TMB Calculator Section -->
+    <section id="calculator" class="py-20 px-4 bg-white/50">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-serif font-bold text-keto-primary mb-4">Calculadora TMB con IA</h2>
+                <p class="text-lg text-keto-secondary">Cálculo preciso con distribución de macros automática</p>
+            </div>
+            
+            <div class="glass-effect rounded-2xl p-8">
+                <form id="tmbForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Edad</label>
+                            <input type="number" id="age" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" placeholder="25 años" required>
+                        </div>
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Género</label>
+                            <select id="gender" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                                <option value="">Selecciona género</option>
+                                <option value="male">Hombre</option>
+                                <option value="female">Mujer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Peso (kg)</label>
+                            <input type="number" id="weight" step="0.1" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" placeholder="70 kg" required>
+                        </div>
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Altura (cm)</label>
+                            <input type="number" id="height" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" placeholder="170 cm" required>
+                        </div>
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Nivel de Actividad</label>
+                            <select id="activity" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                                <option value="">Selecciona actividad</option>
+                                <option value="sedentary">Sedentario</option>
+                                <option value="light">Ligero (1-3 días/semana)</option>
+                                <option value="moderate">Moderado (3-5 días/semana)</option>
+                                <option value="active">Activo (6-7 días/semana)</option>
+                                <option value="very_active">Muy activo (2 veces al día)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Objetivo</label>
+                            <select id="goal" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                                <option value="">Selecciona objetivo</option>
+                                <option value="lose">Pérdida de peso</option>
+                                <option value="maintain">Mantenimiento</option>
+                                <option value="gain">Ganancia de peso</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-keto-accent hover:bg-keto-accent/80 text-white py-4 rounded-lg font-semibold transition-all transform hover:scale-105">
+                        Calcular TMB y Macros
+                    </button>
+                </form>
+                
+                <div id="tmbResults" class="hidden mt-8 p-6 bg-white/50 rounded-lg">
+                    <h3 class="text-2xl font-serif font-bold text-keto-primary mb-4">Tus Resultados</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="text-center p-4 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg">
+                            <div class="text-3xl font-bold text-blue-600" id="tmbValue">0</div>
+                            <div class="text-sm text-blue-800 font-semibold">TMB (kcal/día)</div>
+                            <div class="text-xs text-blue-600 mt-2">Calorías en reposo</div>
+                        </div>
+                        <div class="text-center p-4 bg-gradient-to-br from-green-100 to-green-200 rounded-lg">
+                            <div class="text-3xl font-bold text-green-600" id="tdeeValue">0</div>
+                            <div class="text-sm text-green-800 font-semibold">TDEE (kcal/día)</div>
+                            <div class="text-xs text-green-600 mt-2">Calorías totales</div>
+                        </div>
+                        <div class="text-center p-4 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg">
+                            <div class="text-3xl font-bold text-purple-600" id="targetCalories">0</div>
+                            <div class="text-sm text-purple-800 font-semibold">Calorías Objetivo</div>
+                            <div class="text-xs text-purple-600 mt-2">Para tu objetivo</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-keto-accent/10 rounded-lg">
+                        <h4 class="font-semibold text-keto-primary mb-2">Distribución Recomendada de Macros:</h4>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div class="text-lg font-bold text-red-600">75%</div>
+                                <div class="text-sm text-keto-secondary">Grasas</div>
+                                <div class="text-xs text-keto-secondary" id="fatGrams">0g</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-blue-600">20%</div>
+                                <div class="text-sm text-keto-secondary">Proteínas</div>
+                                <div class="text-xs text-keto-secondary" id="proteinGrams">0g</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-green-600">5%</div>
+                                <div class="text-sm text-keto-secondary">Carbohidratos</div>
+                                <div class="text-xs text-keto-secondary" id="carbGrams">0g</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Macros Tracker Section -->
+    <section id="macros" class="py-20 px-4 bg-white/50">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-serif font-bold text-keto-primary mb-4">Seguimiento de Macros con IA</h2>
+                <p class="text-lg text-keto-secondary">Búsqueda inteligente de alimentos con cálculo automático</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Add Food Section -->
+                <div class="glass-effect rounded-2xl p-8">
+                    <h3 class="text-2xl font-serif font-bold text-keto-primary mb-6">Añadir Alimento</h3>
+                    <form id="foodForm" class="space-y-4">
+                        <div>
+                            <label class="block text-keto-primary font-semibold mb-2">Alimento</label>
+                            <input type="text" id="foodName" list="foodDatabase" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" placeholder="ej: aguacate" required>
+                            <datalist id="foodDatabase"></datalist>
+                            <div id="loadingSpinner" class="hidden text-center py-2">
+                                <div class="loading-spinner"></div>
+                            </div>
+                            <div id="searchResults" class="mt-2 space-y-2 hidden"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-keto-primary font-semibold mb-2">Cantidad</label>
+                                <input type="number" id="foodAmount" step="0.1" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" placeholder="100" required>
+                            </div>
+                            <div>
+                                <label class="block text-keto-primary font-semibold mb-2">Unidad</label>
+                                <select id="foodUnit" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                                    <option value="g">Gramos (g)</option>
+                                    <option value="ml">Mililitros (ml)</option>
+                                    <option value="oz">Onzas (oz)</option>
+                                    <option value="cup">Taza</option>
+                                    <option value="piece">Pieza</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-keto-accent hover:bg-keto-accent/80 text-white py-3 rounded-lg font-semibold transition-all">
+                            Añadir Alimento
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6 pt-6 border-t border-keto-accent/20">
+                        <button onclick="app.showCreateFoodModal()" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition-all">
+                            Crear Alimento Personalizado
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Daily Summary -->
+                <div class="glass-effect rounded-2xl p-8">
+                    <h3 class="text-2xl font-serif font-bold text-keto-primary mb-6">Resumen Diario</h3>
+                    
+                    <div class="flex justify-center space-x-6 mb-8">
+                        <div class="text-center">
+                            <div class="macro-circle bg-gradient-to-br from-red-400 to-red-600 mx-auto mb-2">
+                                <span class="text-white text-lg font-bold" id="dailyFat">0g</span>
+                                <span class="text-white text-xs">Grasa</span>
+                            </div>
+                            <div class="text-sm text-keto-secondary">75% objetivo</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="macro-circle bg-gradient-to-br from-blue-400 to-blue-600 mx-auto mb-2">
+                                <span class="text-white text-lg font-bold" id="dailyProtein">0g</span>
+                                <span class="text-white text-xs">Proteína</span>
+                            </div>
+                            <div class="text-sm text-keto-secondary">20% objetivo</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="macro-circle bg-gradient-to-br from-green-400 to-green-600 mx-auto mb-2">
+                                <span class="text-white text-lg font-bold" id="dailyCarbs">0g</span>
+                                <span class="text-white text-xs">Carbos</span>
+                            </div>
+                            <div class="text-sm text-keto-secondary">5% objetivo</div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm text-keto-primary mb-1">
+                                <span>Calorías</span>
+                                <span id="caloriesProgress">0 / 1800 kcal</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="caloriesBar" class="bg-keto-accent h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm text-keto-primary mb-1">
+                                <span>Carbohidratos</span>
+                                <span id="carbsProgress">0 / 20g</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="carbsBar" class="bg-red-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Food Log -->
+            <div class="glass-effect rounded-2xl p-8 mt-8">
+                <h3 class="text-2xl font-serif font-bold text-keto-primary mb-6">Registro de Hoy</h3>
+                <div id="foodLog" class="space-y-3">
+                    <div class="text-center text-keto-secondary py-8">
+                        No hay alimentos registrados. ¡Añade tu primer alimento!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Create Custom Food Modal -->
+    <div id="createFoodModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 class="text-2xl font-serif font-bold text-keto-primary mb-6">Crear Alimento Personalizado</h3>
+            <form id="createFoodForm" class="space-y-4">
+                <div>
+                    <label class="block text-keto-primary font-semibold mb-2">Nombre del Alimento</label>
+                    <input type="text" id="customFoodName" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-keto-primary font-semibold mb-2">Calorías por 100g</label>
+                        <input type="number" id="customCalories" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                    </div>
+                    <div>
+                        <label class="block text-keto-primary font-semibold mb-2">Grasa por 100g</label>
+                        <input type="number" step="0.1" id="customFat" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                    </div>
+                    <div>
+                        <label class="block text-keto-primary font-semibold mb-2">Proteína por 100g</label>
+                        <input type="number" step="0.1" id="customProtein" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                    </div>
+                    <div>
+                        <label class="block text-keto-primary font-semibold mb-2">Carbos por 100g</label>
+                        <input type="number" step="0.1" id="customCarbs" class="w-full px-4 py-3 rounded-lg border border-keto-accent/30 focus:outline-none focus:ring-2 focus:ring-keto-accent" required>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 bg-keto-accent hover:bg-keto-accent/80 text-white py-3 rounded-lg font-semibold transition-all">Crear Alimento</button>
+                    <button type="button" onclick="app.closeCreateFoodModal()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition-all">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-keto-dark text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <h3 class="text-2xl font-serif font-bold mb-4">KetoLife Pro - Demo Empresarial</h3>
+            <p class="text-white/80 mb-6">Aplicación 100% funcional con base de datos inteligente</p>
+            <div class="text-sm text-white/60">
+                © 2024 KetoLife. Demo lista para implementación inmediata.
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>
